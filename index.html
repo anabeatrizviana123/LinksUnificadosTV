@@ -18,7 +18,7 @@
     {
       nome: "NOVOS NEGÓCIOS",
       backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=novos",
-      duracao: 5 * 60 * 1000, // 5 min
+      duracao: 5 * 60 * 1000,
       dashboards: [
         { nome: "Geral", view: "Especulativo" },
         { nome: "Tarefas Especulativo", view: "TarefasEspeculativo" },
@@ -28,7 +28,7 @@
     {
       nome: "CAPTAÇÃO",
       backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=captacao",
-      duracao: 2 * 60 * 1000, // ✅ 2 min
+      duracao: 2 * 60 * 1000,
       dashboards: [
         { nome: "CAPTACAO | FII DESENV - III", view: "CAPTACAOFIIDESENV-III" },
         { nome: "CAPTACAO | UBERLANDIA", view: "CAPTACAOUBERLANDIA" }
@@ -37,7 +37,7 @@
     {
       nome: "COMERCIAL",
       backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=comercial",
-      duracao: 5 * 60 * 1000, // 5 min
+      duracao: 5 * 60 * 1000,
       dashboards: [
         { nome: "COMERCIAL | ITAJAÍ", view: "COMERCIALITAJA" },
         { nome: "COMERCIAL | VIANA", view: "COMERCIALVIANA" }
@@ -45,8 +45,7 @@
     }
   ];
 
-  const TEMPO_INTERNO = 0.2 * 60 * 1000; // teste (12s)
-  // produção: 60 * 1000
+  const TEMPO_INTERNO = 60 * 1000;
 
   let indexSistema = 0;
   let indexDashboard = 0;
@@ -106,7 +105,6 @@
       );
     }, TEMPO_INTERNO);
 
-    // ⏱ troca de sistema SEM setInterval (evita bug)
     timeoutSistema = setTimeout(() => {
       indexSistema = (indexSistema + 1) % sistemas.length;
       carregarSistema();
