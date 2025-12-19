@@ -1,0 +1,100 @@
+<script>
+  const sistemas = [
+    {
+      nome: "NOVOS NEGÓCIOS",
+      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=novos",
+      duracao: 5 * 60 * 1000,
+      dashboards: [
+        { nome: "Geral", view: "Especulativo" },
+        { nome: "Tarefas Especulativo", view: "TarefasEspeculativo" },
+        { nome: "Tarefas BTS", view: "TarefasBTS" }
+      ]
+    },
+    {
+      nome: "CAPTAÇÃO",
+      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=captacao",
+      duracao: 2 * 60 * 1000,
+      dashboards: [
+        { nome: "CAPTACAO | FII DESENV - III", view: "CAPTACAOFIIDESENV-III" },
+        { nome: "CAPTACAO | UBERLANDIA", view: "CAPTACAOUBERLANDIA" }
+      ]
+    },
+    {
+      nome: "COMERCIAL",
+      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=comercial",
+      duracao: 5 * 60 * 1000,
+      dashboards: [
+        { nome: "COMERCIAL | ITAJAÍ", view: "COMERCIALITAJA" },
+        { nome: "COMERCIAL | VIANA", view: "COMERCIALVIANA" }
+      ]
+    }
+  ];
+
+  const TEMPO_INTERNO = 60 * 1000;
+  
+  let indexSistema = 0;
+  let indexDashboard = 0;
+  let intervaloDashboards = null;
+  let timeoutSistema = null;
+
+  async function fetchToken(url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("Erro backend: " + resp.status);
+    return resp.json();
+  }
+
+  function buildEmbedUrl(embed_url, viewSlug) {
+    const parts = embed_url.split("/views/");
+    const prefix = parts[0] + "/views/";
+    const after = parts[1] || "";
+    const workbookSegment = after.split("/")[0];
+    const params = embed_url.includes("?:")
+      ? embed_url.substring(embed_url.indexOf("?:"))
+      : "";
+    return `${prefix}${workbookSegment}/${viewSlug}${params}`;
+  }
+
+  async function criarViz(viewSlug, jwt, embed_url) {
+    const container = document.getElementById("vizContainer");
+    container.innerHTML = "";
+
+    const viz = document.createElement("tableau-viz");
+    viz.src = buildEmbedUrl(embed_url, viewSlug);
+    viz.token = jwt;
+    viz.toolbar = "hidden";
+    viz.hideTabs = true;
+
+    container.appendChild(viz);
+    console.log("Carregado:", viewSlug);
+  }
+
+  async function carregarSistema() {
+    clearInterval(intervaloDashboards);
+    clearTimeout(timeoutSistema);
+
+    const sistema = sistemas[indexSistema];
+    console.log("==== SISTEMA:", sistema.nome, "====");
+
+    const { embed_url, jwt } = await fetchToken(sistema.backendURL);
+    indexDashboard = 0;
+
+    await criarViz(sistema.dashboards[indexDashboard].view, jwt, embed_url);
+
+    intervaloDashboards = setInterval(async () => {
+      indexDashboard = (indexDashboard + 1) % sistema.dashboards.length;
+      const tokenData = await fetchToken(sistema.backendURL);
+      await criarViz(
+        sistema.dashboards[indexDashboard].view,
+        tokenData.jwt,
+        tokenData.embed_url
+      );
+    }, TEMPO_INTERNO);
+
+    timeoutSistema = setTimeout(() => {
+      indexSistema = (indexSistema + 1) % sistemas.length;
+      carregarSistema();
+    }, sistema.duracao);
+  }
+
+  carregarSistema();
+</script>
