@@ -1,100 +1,116 @@
-<script>
-  const sistemas = [
-    {
-      nome: "NOVOS NEGÓCIOS",
-      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=novos",
-      duracao: 5 * 60 * 1000,
-      dashboards: [
-        { nome: "Geral", view: "Especulativo" },
-        { nome: "Tarefas Especulativo", view: "TarefasEspeculativo" },
-        { nome: "Tarefas BTS", view: "TarefasBTS" }
-      ]
-    },
-    {
-      nome: "CAPTAÇÃO",
-      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=captacao",
-      duracao: 2 * 60 * 1000,
-      dashboards: [
-        { nome: "CAPTACAO | FII DESENV - III", view: "CAPTACAOFIIDESENV-III" },
-        { nome: "CAPTACAO | UBERLANDIA", view: "CAPTACAOUBERLANDIA" }
-      ]
-    },
-    {
-      nome: "COMERCIAL",
-      backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=comercial",
-      duracao: 5 * 60 * 1000,
-      dashboards: [
-        { nome: "COMERCIAL | ITAJAÍ", view: "COMERCIALITAJA" },
-        { nome: "COMERCIAL | VIANA", view: "COMERCIALVIANA" }
-      ]
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Raizz Capital - TV Unificada</title>
+  <script type="module" src="https://us-east-1.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body, #vizContainer { width: 100%; height: 100%; }
+  </style>
+  <link rel="icon" href="https://raizzcapital.com.br/wp-content/uploads/2024/02/logo-raizz-capital-fundo-branco.webp">
+</head>
+<body>
+
+  <div id="vizContainer"></div>
+
+  <script>
+    const sistemas = [
+      {
+        nome: "NOVOS NEGÓCIOS",
+        backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=novos",
+        dashboards: [
+          { nome: "Geral", view: "Especulativo" },
+          { nome: "Tarefas Especulativo", view: "TarefasEspeculativo" },
+          { nome: "Tarefas BTS", view: "TarefasBTS" }
+        ]
+      },
+      {
+        nome: "CAPTAÇÃO",
+        backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=captacao",
+        dashboards: [
+          { nome: "CAPTACAO | FII DESENV - III", view: "CAPTACAOFIIDESENV-III" },
+          { nome: "CAPTACAO | UBERLANDIA", view: "CAPTACAOUBERLANDIA" }
+        ]
+      },
+      {
+        nome: "COMERCIAL",
+        backendURL: "https://tableau-backend-h83x.onrender.com/get_tableau_url?painel=comercial",
+        dashboards: [
+          { nome: "COMERCIAL | ITAJAÍ", view: "COMERCIALITAJA" },
+          { nome: "COMERCIAL | VIANA", view: "COMERCIALVIANA" }
+        ]
+      }
+    ];
+
+    /* TEMPOS */
+    const TEMPO_SISTEMA = 1 * 60 * 1000;    // 5 minutos por sistema
+    const TEMPO_INTERNO = 0.2 * 60 * 1000;    // 1 minuto por dashboard interno
+
+    let indexSistema = 0;
+    let indexDashboard = 0;
+    let vizElement = null;
+    let intervaloDashboards = null;
+
+    async function fetchToken(url) {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro backend: " + resp.status);
+      return resp.json();
     }
-  ];
 
-  const TEMPO_INTERNO = 60 * 1000;
-  
-  let indexSistema = 0;
-  let indexDashboard = 0;
-  let intervaloDashboards = null;
-  let timeoutSistema = null;
+    function buildEmbedUrl(embed_url, viewSlug) {
+      const parts = embed_url.split("/views/");
+      const prefix = parts[0] + "/views/";
+      const after = parts[1] || "";
+      const workbookSegment = after.split("/")[0];
+      const params = embed_url.includes("?:") ? embed_url.substring(embed_url.indexOf("?:")) : "";
+      return `${prefix}${workbookSegment}/${viewSlug}${params}`;
+    }
 
-  async function fetchToken(url) {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error("Erro backend: " + resp.status);
-    return resp.json();
-  }
+    async function criarViz(viewSlug, jwt, embed_url) {
+      const container = document.getElementById("vizContainer");
+      container.innerHTML = "";
+      const urlEmbed = buildEmbedUrl(embed_url, viewSlug);
 
-  function buildEmbedUrl(embed_url, viewSlug) {
-    const parts = embed_url.split("/views/");
-    const prefix = parts[0] + "/views/";
-    const after = parts[1] || "";
-    const workbookSegment = after.split("/")[0];
-    const params = embed_url.includes("?:")
-      ? embed_url.substring(embed_url.indexOf("?:"))
-      : "";
-    return `${prefix}${workbookSegment}/${viewSlug}${params}`;
-  }
+      vizElement = document.createElement("tableau-viz");
+      vizElement.src = urlEmbed;
+      vizElement.token = jwt;
+      vizElement.toolbar = "hidden";
+      vizElement.hideTabs = true;
 
-  async function criarViz(viewSlug, jwt, embed_url) {
-    const container = document.getElementById("vizContainer");
-    container.innerHTML = "";
+      container.appendChild(vizElement);
+      console.log("Carregando:", viewSlug, urlEmbed);
+    }
 
-    const viz = document.createElement("tableau-viz");
-    viz.src = buildEmbedUrl(embed_url, viewSlug);
-    viz.token = jwt;
-    viz.toolbar = "hidden";
-    viz.hideTabs = true;
+    async function carregarSistema() {
+      clearInterval(intervaloDashboards);
 
-    container.appendChild(viz);
-    console.log("Carregado:", viewSlug);
-  }
+      const sistema = sistemas[indexSistema];
+      console.log("==== SISTEMA:", sistema.nome, "====");
 
-  async function carregarSistema() {
-    clearInterval(intervaloDashboards);
-    clearTimeout(timeoutSistema);
+      const { embed_url, jwt } = await fetchToken(sistema.backendURL);
 
-    const sistema = sistemas[indexSistema];
-    console.log("==== SISTEMA:", sistema.nome, "====");
+      indexDashboard = 0;
+      await criarViz(sistema.dashboards[indexDashboard].view, jwt, embed_url);
 
-    const { embed_url, jwt } = await fetchToken(sistema.backendURL);
-    indexDashboard = 0;
+      intervaloDashboards = setInterval(async () => {
+        indexDashboard = (indexDashboard + 1) % sistema.dashboards.length;
+        const tokenData = await fetchToken(sistema.backendURL);
+        await criarViz(tokenData.embed_url ? sistema.dashboards[indexDashboard].view : "", tokenData.jwt, tokenData.embed_url);
+        console.log("Trocou painel interno para:", sistema.dashboards[indexDashboard].nome);
+      }, TEMPO_INTERNO);
+    }
 
-    await criarViz(sistema.dashboards[indexDashboard].view, jwt, embed_url);
+    async function init() {
+      await carregarSistema();
 
-    intervaloDashboards = setInterval(async () => {
-      indexDashboard = (indexDashboard + 1) % sistema.dashboards.length;
-      const tokenData = await fetchToken(sistema.backendURL);
-      await criarViz(
-        sistema.dashboards[indexDashboard].view,
-        tokenData.jwt,
-        tokenData.embed_url
-      );
-    }, TEMPO_INTERNO);
+      setInterval(async () => {
+        indexSistema = (indexSistema + 1) % sistemas.length;
+        await carregarSistema();
+      }, TEMPO_SISTEMA);
+    }
 
-    timeoutSistema = setTimeout(() => {
-      indexSistema = (indexSistema + 1) % sistemas.length;
-      carregarSistema();
-    }, sistema.duracao);
-  }
+    init();
+  </script>
 
-  carregarSistema();
-</script>
+</body>
+</html>
